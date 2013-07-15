@@ -106,9 +106,17 @@ public:
     status wait() 
     { 
 #if defined(BOOST_POSIX_API) 
-        int s; 
-        if (::waitpid(get_id(), &s, 0) == -1) 
-            boost::throw_exception(boost::system::system_error(boost::system::error_code(errno, boost::system::get_system_category()), "boost::process::child::wait: waitpid(2) failed")); 
+        int s;
+        while (true) {
+            pid_t ret = ::waitpid(get_id(), &s, 0);
+
+            if (ret != -1)
+                break;
+            if (errno == EINTR)
+                continue;
+
+            boost::throw_exception(boost::system::system_error(boost::system::error_code(errno, boost::system::get_system_category()), "boost::process::child::wait: waitpid(2) failed"));
+        }
         return status(s); 
 #elif defined(BOOST_WINDOWS_API) 
         ::WaitForSingleObject(process_handle_.get(), INFINITE); 
